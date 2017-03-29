@@ -16,7 +16,8 @@ namespace SeleniumParallelTest
             Driver.Navigate().GoToUrl("http://www.google.com");
             Driver.FindElement(By.Name("q")).SendKeys("IRIS Software");
             Driver.FindElement(By.Name("btnG")).Click();
-            Assert.That(Driver.PageSource.Contains("IRIS Software"), Is.EqualTo(true), "The text IRIS Software doent exist");
+            Assert.That(Driver.PageSource.Contains("IRIS Software"), Is.EqualTo(true), "The text IRIS Software doesnt exist");
+            Driver.Close();
         }
     }
 
@@ -30,7 +31,8 @@ namespace SeleniumParallelTest
             Driver.Navigate().GoToUrl("http://www.google.com");
             Driver.FindElement(By.Name("q")).SendKeys("IRIS Software");
             Driver.FindElement(By.Name("btnG")).Click();
-            Assert.That(Driver.PageSource.Contains("IRIS Software"), Is.EqualTo(true), "The text IRIS Software doent exist");
+            Assert.That(Driver.PageSource.Contains("IRIS Software"), Is.EqualTo(true), "The text IRIS Software doesnt exist");
+            Driver.Close();
         }
     }
 }
