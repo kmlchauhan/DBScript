@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# Usage: neat queues [--env|-e ENV] [--filter|-f REGEXP_FILTER] [--watch]
+# Summary: Query queues with current backlog.
+# Help: Query queues with current backlog.
+#
+# Query all queues
+#
+#   neat queues
+#
+# Query all production queues
+#
+#   neat queues -e production
+#
+# Query all production queues filtering only queue with index
+#
+#   neat queues -e production -f index
+#
+# Query all production queues filtering only queue with index and keep watching the backlog.
+#
+#   neat queues -e production -f index --watch
+#
+
+set -e
+ENVIRONMENT=${2:-qa}
+
+until [ -z "$1" ]; do
+  case $1 in
+    --filter|-f)
+      shift
+      FILTER=$1
+    ;;
+    --watch|-w)
+      WATCH=true
+    ;;
+    --env|-e|--environment )
+      shift
+      ENV=$1
+    ;;
+    -* )
+
+    ;;
+    * )
+      echo "None"
+    ;;
+  esac
+
+  shift
+  if [ "$#" = "0" ]; then
+    break
+  fi
+done
+
+if [[ "$ENV" ]]; then
+  ENV="grep $ENV"
+else
+  ENV="grep ."
+fi
+
+if [[ "$FILTER" ]]; then
+  FILTER="grep $FILTER "
+else
+  FILTER="grep . "
+fi
+
+function list_queues() {
+
+  QUEUES=$(aws sqs list-queues | jq '.QueueUrls | join("\n")' --raw-output | $1 | $2 )
+  printf "%40.40s:  Available inFlight \n" "Queue";
+  for queue in $QUEUES; do
+    name=$(echo $queue| awk -F/ '{print $NF}')
+    printf "%70.70s:" "$name";
+    aws sqs get-queue-attributes --queue-url $queue --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible  --output text |
+    sed "s/ATTRIBUTES//g"
+  done
+
+}
+
+if [ ! -z "$WATCH" ]; then
+  export -f list_queues
+  watch -t --exec bash -c "list_queues \"$ENV\" \"$FILTER\""
+else
+  list_queues "$ENV" "$FILTER"
+fi
+

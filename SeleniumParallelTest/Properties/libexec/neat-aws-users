@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Usage: neat aws-users
+# Summary: List all aws users.
+# Help: List all AWS users
+# To return all autoscaling groups:
+#
+#   neat aws-users
+#
+
+set -e
+
+result=`aws iam list-users | jq -r '.Users[] | [.UserName, .PasswordLastUsed] | join(",")' | sort -k1 -t, | column -s, -t`
+echo $result
+
+echo -e "User,LastLogin\n$result" | column -s, -t

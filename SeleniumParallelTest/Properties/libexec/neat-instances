@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Usage: neat instances ENV(default: all) [TagName:TagValue]
+# Summary: Utility to list and query EC2 instances.
+# Help: Access bastion server or run a command from it.
+#
+# To list all qa instances:
+#
+#   neat instances qa
+#
+# To list all production instances filtering by tag name 'NodeName' and value 'elasticsearch':
+# NOTICE: Usually tag names and tag values are case sensitive.
+#
+#   neat instances production NodeName:elasticsearch
+#
+# To list all staging instances filtering by tag name 'Name' and value 'Async':
+#
+#   neat instances staging Name:Async
+#
+#
+#
+set -e
+ENVIRONMENT=${1:-all}
+
+if [ "$ENVIRONMENT" = 'all' ]; then
+ env_filter=''
+else
+  env_filter="Name=tag:Environment,Values=$ENVIRONMENT"
+fi
+
+if [ ! -z "$2" ]; then
+  TAG_FILTER=`ruby -e "puts 'Name=tag:%s,Values=*%s*' % '${2}'.split(/:/)"`
+  TAG_FILTER_MSG=" with tag filter '$2'"
+fi
+
+echo "Listing instances from '$ENVIRONMENT'$TAG_FILTER_MSG"
+result=`aws ec2 describe-instances --max-items 400 --filters $TAG_FILTER $env_filter "Name=instance-state-name,Values=running" | \
+jq -r '.Reservations[].Instances[]
+  | [
+      .InstanceId,
+      .InstanceType,
+      .PrivateIpAddress,
+      .LaunchTime,
+      (.Tags[] | select(.Key=="Environment") | .Value ),
+      (.Tags[] | select(.Key=="Name") | .Value )
+    ]
+  | join(", ")' | sort --ignore-case -k6`
+
+
+
+echo -e "InstanceId, Type, Ip, Launched, Env, Name\n$result" | column -s, -t

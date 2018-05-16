@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Usage: neat load-balancers [regexp filter]
+# Summary: Check health of load balancer instances.
+# Help: Check health of load balancer instances.
+#
+# Check the health of all instances:
+#
+#   neat load-balancers
+#
+# Filter load balancers:
+#
+#   neat load-balancers sp-production
+#
+#
+set -e
+
+if [ ! -z "$1" ]; then
+  FILTER="grep $1"
+else
+  FILTER='grep .'
+fi
+
+for lb in `aws elb describe-load-balancers | jq -r ".LoadBalancerDescriptions[] | .LoadBalancerName" | sort | $FILTER`; do
+  cecho b "\nChecking load balancer '$lb'"
+  for i in `aws elb describe-instance-health --load-balancer-name $lb | jq -r '.InstanceStates[] | [.InstanceId,.State ] | join(":")'`;do
+
+      line=`echo $i | tr ':' '\t'`
+    if [[ $line == *"InService"* ]]; then
+      cecho g $line
+    else
+    cecho r $line
+    fi
+
+  done
+ done

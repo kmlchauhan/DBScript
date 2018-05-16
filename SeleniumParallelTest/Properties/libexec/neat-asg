@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Usage: neat asg [prefix | regexp filter]
+# Summary: List autoscaling groups with capacity.
+# Help: List autoscaling groups with capacity.
+# To return all autoscaling groups:
+#
+#   neat asg
+#
+# To return autoscaling groups with prefix 'staypuft-workers':
+#
+#   neat asg staypuft-workers
+#
+# To return autoscaling groups with regexp filter:
+#
+#   neat asg staypuft-workers.*qa
+#
+#
+set -e
+
+if [ ! -z "$1" ]; then
+  FILTER="egrep $1"
+else
+  FILTER='grep .'
+fi
+
+result=`aws autoscaling describe-auto-scaling-groups | jq -r '.AutoScalingGroups[] | [ (.MinSize | tostring), (.DesiredCapacity | tostring), (.MaxSize | tostring), (.AutoScalingGroupName | .[0:60]), (.Tags[] | if type != "null" then select(.Key=="Environment") | .Value else "none" | tostring end)] | join(" ,  ")'`
+
+
+result=`echo -e "$result" | $FILTER | sort -k5 -t, `
+echo -e "MinSize , MaxSize , Desired , Name , Environment \n$result" | column -s, -t

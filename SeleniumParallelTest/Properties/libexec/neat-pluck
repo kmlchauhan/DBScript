@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Usage: neat pluck tagfilter(supports only *, no dots)
+# Summary: Pick up one instance that matched with the prefix of the instance name and ssh to it.
+# Help: Pick up one instance that matched with the prefix of the instance name and ssh to it.
+#
+# Accessing a mongo qa instance
+#
+#   neat pluck mongo-qa
+#
+# Accessing any worker instance in production
+#
+#   neat pluck workers*production
+#
+
+set -e
+
+TAG_FILTER="Name=tag:Name,Values=*$1*"
+TAG_FILTER_MSG=" with tag filter '$1'"
+
+echo -e "Finding a single node for tag '$1'\n"
+
+result=`aws ec2 describe-instances --max-items 1 --filters "$TAG_FILTER" "Name=instance-state-name,Values=running" | \
+jq -r '.Reservations[].Instances[]
+  | [
+      .InstanceId,
+      .InstanceType,
+      .PrivateIpAddress,
+      .LaunchTime,
+      (.Tags[] | select(.Key=="Environment") | .Value ),
+      (.Tags[] | select(.Key=="Name") | .Value )
+    ]
+  | join(", ")' | sort --ignore-case -k6`
+
+
+node=`echo $result | cut -d, -f3`
+
+if [ ! -z "$node" ]; then
+  echo -e "InstanceId, Type, Ip, Launched, Env, Name\n$result" | column -s, -t
+
+  echo -e "\nFound and using node $node"
+  echo "SSH'ing in $node"
+  ssh -A -t -o LogLevel=quiet -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no bastion "ssh -o LogLevel=quiet -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -A $node" || true
+else
+  echo "Node not found"
+  exit 1
+fi

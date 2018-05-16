@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Usage: neat staypuft [console ENV | versions]
+# Summary: Utility for Staypuft project.
+# Help: Utility for Staypuft project.
+#
+# Get staypuft versions
+#
+#   neat staypuft versions
+#
+# Open Staypuft Rails console in an environment
+#
+#   neat staypuft console qa
+#
+#
+set -e
+ENVIRONMENT=${2:-qa}
+
+function console() {
+  echo "Finding a staypuft api node from '$ENVIRONMENT'"
+
+  node=`aws ec2 describe-instances --max-items 1 --filters "Name=tag:Name,Values=staypuft-api-$ENVIRONMENT" "Name=tag:Environment,Values=$ENVIRONMENT" "Name=instance-state-name,Values=running" | \
+  jq -r '.Reservations[].Instances[] | .PrivateIpAddress ' | head -1 `
+
+  if [ ! -z "$node" ]; then
+    echo "Found node $node"
+    remote_cmd=`echo "sudo -u staypuft PWD=/mnt/staypuft/current PATH=/usr/local/rvm/gems/ruby-2.2.3@global/bin:/usr/local/rvm/gems/ruby-2.2.3/bin:/usr/local/rvm/gems/ruby-2.2.3@global/bin:/usr/local/rvm/rubies/ruby-2.2.3/bin:/usr/local/rvm/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin DISABLE_SPRING=true RAILS_ENV=$ENVIRONMENT /usr/local/rvm/gems/ruby-2.2.3@global/bin/bundle exec rails console -e $ENVIRONMENT"`
+    ssh -A bastion -t "echo 'SSH'ing in $node; ssh -o StrictHostKeyChecking=no -t $node \"echo 'Loading Rails Console'; cd /mnt/staypuft/current; $remote_cmd\""
+  else
+    echo "Node not found"
+    exit 1
+  fi
+}
+
+function versions(){
+  qa=`curl --silent https://cloud-qa.neat.com/build.version | jq -r '[.environment, .time, .revision] | join(",")'`
+  staging=`curl --silent https://cloud-staging.neat.com/build.version | jq -r '[.environment, .time, .revision] | join(",")'`
+  prod=`curl --silent https://cloud.neat.com/build.version | jq -r '[.environment, .time, .revision] | join(",")'`
+
+  echo -e "Environment, Time, Revision\n$prod\n$staging\n$qa" | column -s, -t
+}
+$1 ${@}
+
+

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Usage: neat aws-account
+# Summary: Get current aws account.
+# Help: Get current aws account.
+set -e
+
+aws iam list-account-aliases | jq .AccountAliases[] --raw-output

@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Usage: neat bastion [ssh | run COMMAND]
+# Summary: Access bastion server or run a command from it.
+# Help: Access bastion server or run a command from it.
+# NOTICE: it requires a `bastion` entry in your ssh config file.
+#
+# To access bation via ssh and keep logged in:
+#
+#   neat bastion ssh
+#
+# To execute a command from bastion
+#
+#   neat bastion run "ls -lh"
+#
+#
+#
+set -e
+
+sshbin=`which ssh`
+function ssh() {
+  $sshbin -A bastion
+}
+
+
+function run(){
+  COMMAND="${2}"
+  $sshbin bastion -o LogLevel=quiet -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no  "$COMMAND"
+}
+
+$1 "${@}"
