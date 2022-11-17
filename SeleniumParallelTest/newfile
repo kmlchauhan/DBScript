@@ -1,0 +1,43 @@
+Infrastructure
+
+The AD API is running as an ECS named ad-api in the uw2-ops-prd001 cluster in the legacy AWS IT-Ops Dev account. It is using target group internal-ad-api with load balancer uw2-ops-prd-ad-api.
+
+DNS CNAME for the ELB is https://ad.api.itops.splunk.com
+
+Health check URL: https://ad.api.itops.splunk.com/health
+
+{"response": "good ad api"}
+
+A dedicated DigiCert certificate covers the domain ad.api.itops.splunk.com and is imported into the AWS ACM and applied to the load balancer.
+
+CI/CD Pipeline
+
+Source code is in GitLab: https://cd.splunkdev.com/corp-iam/automation-ad-api/
+
+The image is hosted in AWS ECR repo-atm-ad-api-prod and can be built and pushed via Docker.
+
+# Retrieve an authentication token and authenticate your Docker client to your registry.
+aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 266349021168.dkr.ecr.us-west-2.amazonaws.com
+
+# Build your Docker image.
+docker build -t repo-atm-ad-api-prod .
+
+# Tag your image.
+docker tag repo-atm-ad-api-prod:latest 266349021168.dkr.ecr.us-west-2.amazonaws.com/repo-atm-ad-api-prod:latest
+
+# Push the image to the ECR repository.
+docker push 266349021168.dkr.ecr.us-west-2.amazonaws.com/repo-atm-ad-api-prod:latest
+
+*Need to document process or create pipeline for how to update the image in the ECR and the task definition for the ECS.
+
+Observability
+
+Access logs are written to s3 bucket elbv2-ops-automation-api and are ingested into RZ Core index aws-elb.
+
+Jira references
+
+https://splunk.atlassian.net/browse/ITDVO-2919 
+
+https://splunk.atlassian.net/browse/TLS-212 
+
+https://splunk.atlassian.net/browse/ITDVO-6529
